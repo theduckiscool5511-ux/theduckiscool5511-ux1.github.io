@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flow Time Calculator (MCF/H)</title>
+<style>
+  body { font-family: Arial; padding: 20px; background: #f9f9f9; }
+  h2 { text-align: center; }
+  input, button, select, label { width: 100%; font-size: 1.2em; padding: 10px; margin: 10px 0; box-sizing: border-box; }
+  button { background-color: #4CAF50; color: white; border: none; cursor: pointer; }
+  button:hover { background-color: #45a049; }
+  .output { text-align: center; font-size: 1.4em; margin-top: 20px; background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0px 0px 8px rgba(0,0,0,0.1); }
+  .toggle-container { display: flex; align-items: center; margin-top: 10px; }
+  .toggle-container input { width: auto; margin-right: 10px; }
+</style>
+</head>
+<body>
+
+<h2>Flow Time Calculator (MCF/H)</h2>
+
+<label>Flow Rate (MCF/H):</label>
+<input id="rate" type="number" placeholder="Enter flow rate in MCF per hour" min="0">
+
+<label>Number of Fill Values (1-10):</label>
+<select id="fillCount">
+  <option value="1">1</option>
+  <option value="2">2</option>
+  <option value="3">3</option>
+  <option value="4">4</option>
+  <option value="5">5</option>
+  <option value="6">6</option>
+  <option value="7">7</option>
+  <option value="8">8</option>
+  <option value="9">9</option>
+  <option value="10">10</option>
+</select>
+
+<div id="fillInputs"></div>
+
+<div class="toggle-container">
+  <input type="checkbox" id="militaryTime">
+  <label for="militaryTime">Show time in military (24-hour) format</label>
+</div>
+
+<button type="button" id="startBtn">Start</button>
+<button type="button" id="resetBtn">Reset</button>
+
+<div class="output">
+  <div>Total Time Left: <span id="timeLeft">--</span></div>
+  <div>Finish Time (Vermont): <span id="finishTime">--</span></div>
+  <div>Current Vermont Time: <span id="currentTime">--</span></div>
+</div>
+
+<script>
+let remainingSeconds = 0;
+let timer;
+
+// Initialize fill inputs on page load
+function updateFillInputs() {
+    const count = parseInt(document.getElementById("fillCount").value);
+    const container = document.getElementById("fillInputs");
+    container.innerHTML = "";
+    for (let i = 1; i <= count; i++) {
+        const label = document.createElement("label");
+        label.innerText = `Current Fill ${i} (MCF):`;
+        const input = document.createElement("input");
+        input.type = "number";
+        input.className = "fill";
+        input.min = "0";
+        input.placeholder = `Enter fill ${i}`;
+        container.appendChild(label);
+        container.appendChild(input);
+    }
+}
+
+// Update current Vermont time every second
+function updateCurrentTime() {
+    const now = new Date();
+    const military = document.getElementById("militaryTime").checked;
+    const vermontTime = now.toLocaleTimeString("en-US", { 
+        timeZone: "America/New_York", 
+        hour12: !military 
+    });
+    document.getElementById("currentTime").innerText = vermontTime;
+}
+
+// Start calculation
+function startCalc() {
+    const rate = parseFloat(document.getElementById("rate").value);
+    if (!rate || rate <= 0) {
+        alert("Please enter a valid flow rate.");
+        return;
+    }
+
+    const fills = document.getElementsByClassName("fill");
+    let totalFill = 0;
+    for (let f of fills) {
+        const val = parseFloat(f.value);
+        if (isNaN(val) || val < 0) {
+            alert("Please enter valid fill values.");
+            return;
+        }
+        totalFill += val;
+    }
+    if(totalFill === 0) { alert("Total fill cannot be zero."); return; }
+
+    remainingSeconds = (totalFill / rate) * 3600;
+
+    if(timer) clearInterval(timer);
+    timer = setInterval(updateTimer, 1000);
+    updateTimer(); // first immediate update
+}
+
+// Update countdown
+function updateTimer() {
+    if (remainingSeconds <= 0) {
+        document.getElementById("timeLeft").innerText = "Finished";
+        clearInterval(timer);
+        return;
+    }
+    const hours = Math.floor(remainingSeconds / 3600);
+    const minutes = Math.floor((remainingSeconds % 3600) / 60);
+    const seconds = Math.floor(remainingSeconds % 60);
+    document.getElementById("timeLeft").innerText = `${hours}h ${minutes}m ${seconds}s`;
+
+    const now = new Date();
+    const finish = new Date(now.getTime() + remainingSeconds * 1000);
+    const military = document.getElementById("militaryTime").checked;
+    document.getElementById("finishTime").innerText =
+        finish.toLocaleTimeString("en-US", { timeZone: "America/New_York", hour12: !military });
+
+    remainingSeconds--;
+}
+
+// Reset calculator
+function resetCalc() {
+    if(timer) clearInterval(timer);
+    remainingSeconds = 0;
+    document.getElementById("timeLeft").innerText = "--";
+    document.getElementById("finishTime").innerText = "--";
+    updateFillInputs();
+}
+
+// Event listeners
+document.getElementById("fillCount").addEventListener("change", updateFillInputs);
+document.getElementById("startBtn").addEventListener("click", startCalc);
+document.getElementById("resetBtn").addEventListener("click", resetCalc);
+setInterval(updateCurrentTime, 1000);
+
+// Initialize inputs on page load
+updateFillInputs();
+</script>
+
+</body>
+</html>
